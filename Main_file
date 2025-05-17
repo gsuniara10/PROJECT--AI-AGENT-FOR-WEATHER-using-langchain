@@ -1,0 +1,35 @@
+from dotenv import load_dotenv
+from langchain_groq import ChatGroq
+from langchain_core.tools import Tool
+from langchain_community.tools import DuckDuckGoSearchRun
+from langchain.agents import create_react_agent, AgentExecutor
+from langchain import hub
+import requests
+
+load_dotenv()
+
+simple_llm  = ChatGroq(
+     model="llama-3.1-8b-instant"
+)
+
+searching_tool = DuckDuckGoSearchRun()
+
+def get_weather_data(city:str) -> str:
+    """This function fecthes the current weather data for a given city"""
+    website_url = f'https://api.weatherstack.com/current?access_key=***********&query={city}'                # please put your api key here
+    get_response = requests.get(website_url)
+
+# Pull the ReAct prompt from langchain hub
+langchain_prompt = hub.pull("hwchase17/react")
+
+# create a agent
+creating_agent = create_react_agent(llm=simple_llm, tools=[searching_tool,get_weather_data], prompt=langchain_prompt)
+
+# Wrap the agent with AgentExecutor
+agent_executor = AgentExecutor(agent=creating_agent, tools=[searching_tool,get_weather_data], verbose=True)
+
+query = input("Enter the query : ")
+
+agent_output = agent_executor.invoke({"input":query})
+
+print(agent_output['output'])
